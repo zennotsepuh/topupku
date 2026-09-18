@@ -1,0 +1,270 @@
+<script>
+// ============================================================
+// TOPUPKU – FRONTEND APP
+// ============================================================
+
+const API_URL = window.location.origin + '/api';
+const $ = id => document.getElementById(id);
+
+let state = {
+  games: [],
+  denoms: [],
+  payments: [],
+  selectedGame: null,
+  selectedDenom: null,
+  selectedPayment: null,
+  searchQuery: '',
+};
+
+// ==================== INIT ====================
+async function init() {
+  await loadGames();
+  await loadPayments();
+}
+
+// ==================== LOAD GAMES ====================
+async function loadGames() {
+  try {
+    const res = await fetch(`${API_URL}/products/games`);
+    const data = await res.json();
+    state.games = data.data || [];
+    renderGames();
+  } catch (err) {
+    console.error('Load games failed:', err);
+    showToast('❌ Gagal load game');
+  }
+}
+
+// ==================== LOAD DENOMS ====================
+async function loadDenoms(gameCode) {
+  try {
+    const res = await fetch(`${API_URL}/products/games/${gameCode}/denoms`);
+    const data = await res.json();
+    state.denoms = data.data || [];
+    renderDenoms();
+  } catch (err) {
+    console.error('Load denoms failed:', err);
+    showToast('❌ Gagal load nominal');
+  }
+}
+
+// ==================== LOAD PAYMENTS ====================
+async function loadPayments() {
+  try {
+    const res = await fetch(`${API_URL}/products/payments`);
+    const data = await res.json();
+    state.payments = data.data || [];
+    renderPayments();
+  } catch (err) {
+    console.error('Load payments failed:', err);
+  }
+}
+
+// ==================== RENDER GAMES ====================
+function renderGames() {
+  const grid = $('gameGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  
+  const filtered = state.games.filter(g =>
+    g.name.toLowerCase().includes(state.searchQuery.toLowerCase())
+  );
+  
+  filtered.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    card.onclick = () => selectGame(g);
+    card.innerHTML = `
+      <div class="game-icon">
+        <img src="${g.icon_url}" alt="${g.name}" 
+             onerror="this.style.display='none'; this.parentNode.innerHTML='🎮';">
+      </div>
+      <div class="game-name">${g.name}</div>
+      <div class="game-publisher">${g.publisher}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ==================== SELECT GAME ====================
+async function selectGame(game) {
+  state.selectedGame = game;
+  state.selectedDenom = null;
+  state.selectedPayment = null;
+  
+  $('gameCatalog').style.display = 'none';
+  $('heroSection').style.display = 'none';
+  $('denomSection').style.display = 'block';
+  
+  $('denomHeader').innerHTML = `
+    <div class="denom-header-icon">
+      <img src="${game.icon_url}" onerror="this.parentNode.innerHTML='🎮'">
+    </div>
+    <div class="denom-header-info">
+      <h3>${game.name}</h3>
+      <p>${game.publisher}</p>
+    </div>
+  `;
+  
+  await loadDenoms(game.code);
+  renderPayments();
+  updateSummary();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ==================== RENDER DENOMS ====================
+function renderDenoms() {
+  const grid = $('denomGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  
+  state.denoms.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'denom-card';
+    card.onclick = () => selectDenom(d);
+    card.innerHTML = `
+      ${d.badge ? `<div class="denom-badge">${d.badge}</div>` : ''}
+      <div class="denom-amount">${d.name}</div>
+      <div class="denom-price">Rp ${formatNumber(d.price)}</div>
+      ${d.bonus ? `<div class="denom-bonus">🎁 ${d.bonus}</div>` : ''}
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function selectDenom(d) {
+  state.selectedDenom = d;
+  document.querySelectorAll('.denom-card').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  updateSummary();
+}
+
+// ==================== RENDER PAYMENTS ====================
+function renderPayments() {
+  const grid = $('paymentGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  
+  state.payments.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'pay-card';
+    card.onclick = () => selectPayment(p);
+    card.innerHTML = `
+      <div class="pay-icon">${p.icon_url}</div>
+      <div class="pay-name">${p.name}</div>
+      <div class="pay-fee">${p.fee > 0 ? '+Rp ' + formatNumber(p.fee) : 'GRATIS'}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function selectPayment(p) {
+  state.selectedPayment = p;
+  document.querySelectorAll('.pay-card').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  updateSummary();
+}
+
+// ==================== UPDATE SUMMARY ====================
+function updateSummary() {
+  const d = state.selectedDenom;
+  const p = state.selectedPayment;
+  
+  const price = d ? parseFloat(d.price) : 0;
+  const fee = p ? parseFloat(p.fee) + (price * parseFloat(p.fee_percent || 0) / 100) : 0;
+  const total = price + fee;
+  
+  $('sumProduct').textContent = d && state.selectedGame ? `${state.selectedGame.name} – ${d.name}` : '-';
+  $('sumPrice').textContent = `Rp ${formatNumber(price)}`;
+  $('sumFee').textContent = `Rp ${formatNumber(fee)}`;
+  $('sumTotal').textContent = `Rp ${formatNumber(total)}`;
+  
+  const userId = $('userId').value.trim();
+  const serverId = $('serverId').value.trim();
+  const contact = $('contact').value.trim();
+  const needServer = state.selectedGame?.need_server;
+  
+  const valid = d && p && userId && contact && (!needServer || serverId);
+  $('payBtn').disabled = !valid;
+}
+
+// ==================== PROCESS PAYMENT ====================
+async function processPayment() {
+  const g = state.selectedGame;
+  const d = state.selectedDenom;
+  const p = state.selectedPayment;
+  
+  if (!g || !d || !p) return showToast('❌ Lengkapi data dulu');
+  
+  const btn = $('payBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ MEMPROSES...';
+  
+  try {
+    // 1. Create order
+    const orderRes = await fetch(`${API_URL}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        game_id: g.id,
+        denom_id: d.id,
+        payment_id: p.id,
+        user_game_id: $('userId').value.trim(),
+        server_id: $('serverId').value.trim(),
+        contact: $('contact').value.trim(),
+        buyer_name: $('buyerName').value.trim(),
+      })
+    });
+    
+    const orderData = await orderRes.json();
+    if (!orderData.success) throw new Error(orderData.error);
+    
+    // 2. Create payment token
+    const payRes = await fetch(`${API_URL}/payment/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderData.data.order_id })
+    });
+    
+    const payData = await payRes.json();
+    if (!payData.success) throw new Error(payData.error);
+    
+    // 3. Redirect ke Midtrans
+    window.location.href = payData.data.redirect_url;
+    
+  } catch (err) {
+    showToast('❌ ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '💳 BAYAR SEKARANG';
+  }
+}
+
+// ==================== UTILS ====================
+function formatNumber(n) {
+  return parseFloat(n).toLocaleString('id-ID');
+}
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('active');
+  clearTimeout(window._tt);
+  window._tt = setTimeout(() => t.classList.remove('active'), 2500);
+}
+
+// Attach input listeners
+window.addEventListener('load', () => {
+  ['userId', 'serverId', 'contact', 'buyerName'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('input', updateSummary);
+  });
+  
+  $('searchInput')?.addEventListener('input', (e) => {
+    state.searchQuery = e.target.value;
+    renderGames();
+  });
+});
+
+// Init
+init();
+</script>
