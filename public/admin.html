@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard – TopUpKu</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- ==================== LOGIN PAGE ==================== -->
+<div class="login-page active" id="loginPage">
+  <div class="login-box">
+    <h1>🔐 ADMIN LOGIN</h1>
+    <p>Masuk ke dashboard TopUpKu</p>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="admin" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">🔐 MASUK</button>
+    </form>
+  </div>
+</div>
+
+<!-- ==================== DASHBOARD PAGE ==================== -->
+<div id="dashboardPage" style="display:none;">
+  
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">⚡ TopUpKu Admin</div>
+    <div class="topbar-actions">
+      <button class="topbar-btn" id="syncBtn" onclick="syncDigiflazz()">🔄 Sync Harga</button>
+      <button class="topbar-btn" id="saldoBtn" onclick="cekSaldo()">💰 Cek Saldo</button>
+      <button class="topbar-btn" id="refreshBtn">🔄 Refresh</button>
+      <button class="topbar-btn" id="logoutBtn">🚪 Logout</button>
+    </div>
+  </div>
+  
+  <div class="admin-container">
+    
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Orders</div>
+        <div class="stat-value" id="statTotalOrders">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Success</div>
+        <div class="stat-value success" id="statSuccessOrders">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value warn" id="statPendingOrders">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Revenue</div>
+        <div class="stat-value accent" id="statRevenue">Rp 0</div>
+      </div>
+    </div>
+    
+    <!-- INFO SALDO DIGIFLAZZ -->
+    <div class="form-box" id="saldoBox" style="display:none;">
+      <div class="form-title">💰 Saldo Digiflazz</div>
+      <div style="font-size:1.5em;font-weight:bold;color:var(--accent);" id="saldoValue">Rp 0</div>
+      <div style="color:var(--muted);font-size:0.85em;margin-top:5px;" id="saldoUpdated">-</div>
+    </div>
+    
+    <!-- FILTER -->
+    <div class="filter-bar">
+      <input type="text" class="search-input" id="searchOrder" placeholder="🔍 Cari order ID, nama, atau User ID...">
+      <button class="filter-btn active" onclick="setStatusFilter('all', this)">Semua</button>
+      <button class="filter-btn" onclick="setStatusFilter('pending', this)">Pending</button>
+      <button class="filter-btn" onclick="setStatusFilter('paid', this)">Paid</button>
+      <button class="filter-btn" onclick="setStatusFilter('processing', this)">Processing</button>
+      <button class="filter-btn" onclick="setStatusFilter('success', this)">Success</button>
+      <button class="filter-btn" onclick="setStatusFilter('failed', this)">Failed</button>
+    </div>
+    
+    <!-- ORDERS TABLE -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Pembeli</th>
+            <th>Produk</th>
+            <th>User ID Game</th>
+            <th>Bayar</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody">
+          <tr>
+            <td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">
+              ⏳ Loading orders...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+  </div>
+</div>
+
+<!-- ==================== MODAL DETAIL ORDER ==================== -->
+<div class="modal" id="orderModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>📋 Detail Order</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ==================== TOAST ==================== -->
+<div class="toast" id="toast">Pesan</div>
+
+<!-- ==================== SCRIPT ==================== -->
+<script src="/js/admin.js"></script>
+</body>
+</html>
